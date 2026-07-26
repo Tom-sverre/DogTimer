@@ -1,14 +1,15 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { exportDb, importDb } from "../api";
+import { exportDb } from "../api";
 
 export default function Settings() {
   const navigate = useNavigate();
   const fileRef = useRef(null);
-  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState(null); // null | "uploading" | "success" | "error"
+  const [importMsg, setImportMsg] = useState("");
   const [toast, setToast] = useState(null);
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
   const handleExport = () => {
     exportDb();
@@ -22,17 +23,80 @@ export default function Settings() {
       fileRef.current.value = "";
       return;
     }
-    setImporting(true);
+
+    setImportStatus("uploading");
+    setImportMsg(`Laster opp "${file.name}" (${(file.size / 1024).toFixed(1)} KB)…`);
+
     try {
-      const result = await importDb(file);
-      showToast(result.message || "Import fullført ✅");
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (e) {
-      showToast("Feil ved import: " + e.message);
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await fetch("/api/settings/import-db", { method: "POST", body: form });
+      const result = await res.json();
+
+      if (!res.ok) {
+        // FastAPI returnerer { detail: "..." } ved feil
+        throw new Error(result.detail || `Serverfeil ${res.status}`);
+      }
+
+      if (!result.ok) {
+        throw new Error(result.message || "Ukjent feil fra server");
+      }
+
+      setImportStatus("success");
+      setImportMsg(result.message || "Import fullført!");
+    } catch (err) {
+      setImportStatus("error");
+      setImportMsg(err.message || "Ukjent feil");
     } finally {
-      setImporting(false);
       fileRef.current.value = "";
     }
+  };
+
+  const statusBox = () => {
+    if (!importStatus) return null;
+
+    const styles = {
+      uploading: { bg: "#eff6ff", border: "#bfdbfe", color: "#1e40af", icon: "⏳" },
+      success:   { bg: "#f0fdf4", border: "#bbf7d0", color: "#166534", icon: "✅" },
+      error:     { bg: "#fef2f2", border: "#fecaca", color: "#991b1b", icon: "❌" },
+    }[importStatus];
+
+    return (
+      <div style={{
+        marginTop: 14,
+        background: styles.bg,
+        border: `1px solid ${styles.border}`,
+        borderRadius: "var(--radius-sm)",
+        padding: "14px 16px",
+        fontSize: 13,
+        color: styles.color,
+        lineHeight: 1.6
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>
+          {styles.icon} {importStatus === "uploading" ? "Importerer…" : importStatus === "success" ? "Import fullført" : "Import feilet"}
+        </div>
+        <div>{importMsg}</div>
+        {importStatus === "success" && (
+          <button
+            className="btn-primary"
+            style={{ marginTop: 12, fontSize: 13 }}
+            onClick={() => window.location.reload()}
+          >
+            🔄 Last inn siden på nytt
+          </button>
+        )}
+        {importStatus === "error" && (
+          <button
+            className="btn-secondary"
+            style={{ marginTop: 10, fontSize: 13 }}
+            onClick={() => setImportStatus(null)}
+          >
+            Lukk
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -68,7 +132,7 @@ export default function Settings() {
             background: "var(--danger-bg)", border: "1px solid #fecaca", borderRadius: "var(--radius-sm)",
             padding: "12px", fontSize: 13, marginBottom: 12, color: "#991b1b"
           }}>
-            ⚠️ Pass på: Importer kun filer fra DogTime. Appen startes på nytt etter import.
+            ⚠️ Importer kun .db-filer eksportert fra DogTime. Last inn siden etter import for å se de nye dataene.
           </div>
           <input
             ref={fileRef}
@@ -79,11 +143,13 @@ export default function Settings() {
           />
           <button
             className="btn-danger"
-            disabled={importing}
-            onClick={() => fileRef.current.click()}
+            disabled={importStatus === "uploading"}
+            onClick={() => { setImportStatus(null); fileRef.current.click(); }}
           >
-            {importing ? "Importerer..." : "⬆️ Importer database"}
+            {importStatus === "uploading" ? "⏳ Importerer…" : "⬆️ Importer database"}
           </button>
+
+          {statusBox()}
         </div>
       </div>
 
@@ -92,7 +158,7 @@ export default function Settings() {
         <div className="card-title">ℹ️ Om DogTime</div>
         <div style={{ fontSize: 14, color: "var(--text-sub)", lineHeight: 1.8 }}>
           <div>🐾 <strong>DogTime</strong> – Søvn- og aktivitetssporing for hunder</div>
-          <div>📦 Versjon 1.0.0</div>
+          <div>📦 Versjon 2.2.1</div>
           <div>🗄️ Database: SQLite</div>
           <div>🐋 Kjører i Docker</div>
         </div>
