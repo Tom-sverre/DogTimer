@@ -354,3 +354,28 @@ git commit -m "chore: add data/ to .gitignore to exclude SQLite and knowledge ba
 git add git.md
 git commit -m "docs: update changelog for v2.1.0 bugfix release"
 ```
+
+---
+
+### Release 2.2.0 – iPhone safe area fix ###
+
+# Fix: Navbar gjemmer seg bak iOS-statuslinje på iPhone
+Navbaren ble skjult bak klokke og batteri-ikon fordi appen bruker black-translucent statuslinje
+(viewport-fit=cover) uten at CSS tok høyde for safe area insets.
+
+Endringer:
+- frontend/src/index.css – .navbar bruker nå env(safe-area-inset-top) som padding-top
+  og min-height: calc(var(--nav-h) + env(safe-area-inset-top)) slik at innholdet
+  alltid vises under statuslinjen. Lagt til env(safe-area-inset-left/right) for
+  korrekt avstand i liggende modus.
+
+```
+git add frontend/src/index.css
+git commit -m "fix: add iOS safe-area-inset-top to navbar so it clears the status bar"
+```
+
+# Dokumentasjon
+```
+git add git.md
+git commit -m "docs: update changelog for v2.2.0 iPhone safe area fix"
+```
