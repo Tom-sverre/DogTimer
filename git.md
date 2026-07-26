@@ -414,3 +414,41 @@ git commit -m "fix: correct export-db and import-db API URLs in api.js"
 git add git.md
 git commit -m "docs: update changelog for v2.2.1 database export/import fix"
 ```
+
+---
+
+### Release 2.3.0 – Timer-persistens ved Docker-restart ###
+
+# Timer gjenopptas automatisk etter Docker-restart
+Løser problemet der timeren viste 00:00:00 etter at Docker gikk ned og kom opp igjen,
+og der brukeren ikke fikk tilbakemelding om at en pågående økt ble gjenopptatt.
+
+**Rotårsak:**
+`setInterval` startet tidsberegningen, men første tick kom etter 1 sekund.
+Dermed viste timeren `00:00:00` i ~1 sekund etter reload, selv om økten hadde
+pågått i timer.
+
+**Løsning (DogDashboard.jsx):**
+- `elapsed` beregnes umiddelbart ved `useEffect` på `activeSession`,
+  basert på `start_time` fra databasen (ikke lokal klokkeslett)
+- Ny `isRecovered`-tilstand: settes `true` dersom `initialElapsed > 30` sek
+  når siden lastes – betyr at timeren var i gang fra før appen startet
+- Visuell «Gjenopptatt»-badge vises under tidsdisplayet med klokkeslett
+  for når økten faktisk startet
+
+**Hvorfor dette fungerer:**
+SQLite-databasen er persistert via Docker-volumet `./data:/app/data`.
+Når Docker-containeren restartes vil `GET /api/sessions/active/{dog_id}`
+returnere den pågående økten med original `start_time`. Frontenden beregner
+`Date.now() - new Date(start_time).getTime()` som er timezone-uavhengig
+(begge i millisekunder siden Unix epoch).
+
+Endringer:
+- frontend/src/pages/DogDashboard.jsx – Umiddelbar elapsed-beregning, isRecovered-state og Gjenopptatt-badge
+
+```
+git add frontend/src/pages/DogDashboard.jsx
+git commit -m "feat: resume timer instantly after Docker restart with Gjenopptatt indicator"
+git add git.md
+git commit -m "docs: update changelog for v2.3.0 timer persistence"
+```
