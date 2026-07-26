@@ -357,25 +357,42 @@ git commit -m "docs: update changelog for v2.1.0 bugfix release"
 
 ---
 
-### Release 2.2.0 – iPhone safe area fix ###
+### Release 2.2.0 – iPhone PWA safe area fix ###
 
-# Fix: Navbar gjemmer seg bak iOS-statuslinje på iPhone
-Navbaren ble skjult bak klokke og batteri-ikon fordi appen bruker black-translucent statuslinje
-(viewport-fit=cover) uten at CSS tok høyde for safe area insets.
+# Fix: Navbar skjult bak iOS-statuslinje (CSS safe area insets)
+Navbaren ble skjult bak klokke og batteri i Safari fordi appen bruker
+viewport-fit=cover uten at CSS tok høyde for safe area insets.
 
 Endringer:
-- frontend/src/index.css – .navbar bruker nå env(safe-area-inset-top) som padding-top
-  og min-height: calc(var(--nav-h) + env(safe-area-inset-top)) slik at innholdet
-  alltid vises under statuslinjen. Lagt til env(safe-area-inset-left/right) for
-  korrekt avstand i liggende modus.
+- frontend/src/index.css – .navbar bruker nå env(safe-area-inset-top) som
+  padding-top og min-height: calc(var(--nav-h) + env(safe-area-inset-top)).
+  Lagt til env(safe-area-inset-left/right) for korrekt avstand i liggende modus.
 
 ```
 git add frontend/src/index.css
 git commit -m "fix: add iOS safe-area-inset-top to navbar so it clears the status bar"
 ```
 
+# Fix: Navbar fortsatt skjult i standalone PWA-modus (hjemskjerm-app)
+CSS-fiksen fungerte i Safari, men ikke når appen kjøres som PWA fra hjemskjermen.
+Årsak: black-translucent statuslinje overlapper innholdet i standalone-modus uten
+at env(safe-area-inset-top) ble respektert konsekvent på tvers av iOS-versjoner.
+
+Endringer:
+- frontend/index.html – apple-mobile-web-app-status-bar-style endret fra
+  black-translucent til black. Statuslinjen får nå solid svart bakgrunn og
+  innholdet starter automatisk under den uten CSS-beregninger.
+
+NB: Krever at appen slettes og legges til på nytt fra hjemskjermen etter rebuild,
+da PWA-en cacher den gamle versjonen.
+
+```
+git add frontend/index.html
+git commit -m "fix: change status bar style to black so navbar is visible in standalone PWA mode"
+```
+
 # Dokumentasjon
 ```
 git add git.md
-git commit -m "docs: update changelog for v2.2.0 iPhone safe area fix"
+git commit -m "docs: update changelog for v2.2.0 iPhone PWA safe area fix"
 ```
