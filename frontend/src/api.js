@@ -46,9 +46,9 @@ export const exportVetIcal = (dogId) => `/api/dogs/${dogId}/vet/export/ical`;
 export const exportSingleVetIcal = (dogId, apptId) => `/api/dogs/${dogId}/vet/${apptId}/ical`;
 
 // Settings
-export const exportDb = () => window.open("/api/settings/export", "_blank");
+export const exportDb = () => window.open("/api/settings/export-db", "_blank");
 export const importDb = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return fetch("/api/settings/import", { method: "POST", body: form }).then(r => r.json());
+  return fetch("/api/settings/import-db", { method: "POST", body: form }).then(r => r.json());
 };
