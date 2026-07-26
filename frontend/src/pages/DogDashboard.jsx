@@ -21,6 +21,7 @@ export default function DogDashboard() {
   const [elapsed, setElapsed] = useState(0)
   const [initMode, setInitMode] = useState('sleep')
   const [todaySessions, setTodaySessions] = useState([])
+  const [isRecovered, setIsRecovered] = useState(false)
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -32,12 +33,22 @@ export default function DogDashboard() {
   useEffect(() => {
     if (activeSession) {
       const start = new Date(activeSession.start_time).getTime()
+
+      // Beregn elapsed umiddelbart – unngår 0-flash og sikrer riktig tid etter Docker-restart
+      const initialElapsed = Math.floor((Date.now() - start) / 1000)
+      setElapsed(initialElapsed)
+
+      // Hvis økten allerede hadde kjørt i mer enn 30 sek da vi lastet siden,
+      // var den i gang før appen startet (f.eks. Docker-restart)
+      setIsRecovered(initialElapsed > 30)
+
       timerRef.current = setInterval(() => {
         setElapsed(Math.floor((Date.now() - start) / 1000))
       }, 1000)
     } else {
       clearInterval(timerRef.current)
       setElapsed(0)
+      setIsRecovered(false)
     }
     return () => clearInterval(timerRef.current)
   }, [activeSession])
@@ -115,6 +126,26 @@ export default function DogDashboard() {
             <div className="timer-display" style={{ color: TYPE_COLOR[activeSession.type] }}>
               {formatDuration(elapsed)}
             </div>
+
+            {/* Gjenopptatt-indikator: vises når timer var i gang ved Docker-restart */}
+            {isRecovered && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: 'var(--text2)',
+                background: 'var(--bg3)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '3px 10px',
+                marginTop: 6,
+                marginBottom: 2
+              }}>
+                ⟳ Gjenopptatt – startet{' '}
+                {new Date(activeSession.start_time).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
               {/* Hoved-knapp: bytt til motpart */}
