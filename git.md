@@ -396,3 +396,21 @@ git commit -m "fix: change status bar style to black so navbar is visible in sta
 git add git.md
 git commit -m "docs: update changelog for v2.2.0 iPhone PWA safe area fix"
 ```
+
+---
+
+### Release 2.2.1 – Bugfix: Database eksport/import ###
+
+# Fix: Feil URL for database eksport og import
+Frontend kalte `/api/settings/export` og `/api/settings/import`, mens backend-endepunktene heter `/api/settings/export-db` og `/api/settings/import-db`. Eksport returnerte 404 og ble tolket som "database ikke funnet".
+
+Endringer:
+- frontend/src/api.js – `/api/settings/export` → `/api/settings/export-db`
+- frontend/src/api.js – `/api/settings/import` → `/api/settings/import-db`
+
+```
+git add frontend/src/api.js
+git commit -m "fix: correct export-db and import-db API URLs in api.js"
+git add git.md
+git commit -m "docs: update changelog for v2.2.1 database export/import fix"
+```
