@@ -116,11 +116,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .navbar {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 0 20px;
+  /* Safe area: skyv innhold ned under iOS-statuslinje */
+  padding: env(safe-area-inset-top) 20px 0;
+  padding-left: calc(20px + env(safe-area-inset-left));
+  padding-right: calc(20px + env(safe-area-inset-right));
   display: flex;
   align-items: center;
   gap: 4px;
-  height: var(--nav-h);
+  min-height: calc(var(--nav-h) + env(safe-area-inset-top));
   position: sticky;
   top: 0;
   z-index: 100;
