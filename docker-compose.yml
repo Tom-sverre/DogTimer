@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: dogtime-backend
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/dogtime.db
+      - KNOWLEDGE_BASE_PATH=/app/data/knowledge
+    restart: unless-stopped
+    networks:
+      - dogtime-net
+
+  frontend:
+    build: ./frontend
+    container_name: dogtime-frontend
+    ports:
+      - "${PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - dogtime-net
+
+networks:
+  dogtime-net:
+    driver: bridge
