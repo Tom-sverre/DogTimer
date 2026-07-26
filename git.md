@@ -417,38 +417,41 @@ git commit -m "docs: update changelog for v2.2.1 database export/import fix"
 
 ---
 
-### Release 2.3.0 – Timer-persistens ved Docker-restart ###
+### Release 2.3.0 – Import: statusindikatorer og feilhåndtering ###
 
-# Timer gjenopptas automatisk etter Docker-restart
-Løser problemet der timeren viste 00:00:00 etter at Docker gikk ned og kom opp igjen,
-og der brukeren ikke fikk tilbakemelding om at en pågående økt ble gjenopptatt.
+# Fix: Import viste ingen tilbakemelding og feil ble ikke fanget opp
+To rotproblemer ble identifisert:
+1. Backend returnerte HTTP 400/500 med `{"detail": "..."}` som frontend aldri sjekket (sjekket kun `result.ok`)
+2. SQLAlchemy hadde åpne tilkoblinger til gammel database – ny DB ble skrevet til disk men ikke tatt i bruk uten container-restart
 
-**Rotårsak:**
-`setInterval` startet tidsberegningen, men første tick kom etter 1 sekund.
-Dermed viste timeren `00:00:00` i ~1 sekund etter reload, selv om økten hadde
-pågått i timer.
-
-**Løsning (DogDashboard.jsx):**
-- `elapsed` beregnes umiddelbart ved `useEffect` på `activeSession`,
-  basert på `start_time` fra databasen (ikke lokal klokkeslett)
-- Ny `isRecovered`-tilstand: settes `true` dersom `initialElapsed > 30` sek
-  når siden lastes – betyr at timeren var i gang fra før appen startet
-- Visuell «Gjenopptatt»-badge vises under tidsdisplayet med klokkeslett
-  for når økten faktisk startet
-
-**Hvorfor dette fungerer:**
-SQLite-databasen er persistert via Docker-volumet `./data:/app/data`.
-Når Docker-containeren restartes vil `GET /api/sessions/active/{dog_id}`
-returnere den pågående økten med original `start_time`. Frontenden beregner
-`Date.now() - new Date(start_time).getTime()` som er timezone-uavhengig
-(begge i millisekunder siden Unix epoch).
-
-Endringer:
-- frontend/src/pages/DogDashboard.jsx – Umiddelbar elapsed-beregning, isRecovered-state og Gjenopptatt-badge
+# Backend – Validering, engine.dispose() og backup
+Endringer i `backend/app/routers/settings.py`:
+- Importerer `engine` fra `..database` og kaller `engine.dispose()` før skriving, slik at SQLAlchemy slipper gammel DB og ny tas i bruk umiddelbart
+- Validerer at opplastet fil er en gyldig SQLite-database (sjekker magic bytes `SQLite format 3\x00`)
+- Tar automatisk backup til `dogtime.db.bak` før overskriving
+- Gjenoppretter backup og kaller `engine.dispose()` på nytt ved feil
+- Returnerer filstørrelse i KB i svaret
+- Bruker `raise HTTPException` med korrekte HTTP-statuskoder (400/500) i stedet for å returnere JSON-feil
 
 ```
-git add frontend/src/pages/DogDashboard.jsx
-git commit -m "feat: resume timer instantly after Docker restart with Gjenopptatt indicator"
+git add backend/app/routers/settings.py
+git commit -m "fix: validate SQLite magic bytes, dispose engine on import, auto-backup before overwrite"
+```
+
+# Frontend – Steg-for-steg statusvisning i Settings
+Endringer i `frontend/src/pages/Settings.jsx`:
+- Fjernet avhengighet av `importDb` fra `../api` – bruker nå direkte `fetch()` med `res.ok`-sjekk slik at HTTP-feil fra serveren kastes riktig
+- Ny `importStatus`-state med tre tilstander: `uploading` / `success` / `error`
+- Synlig statuskort under importknappen med farge og ikon per tilstand (blå/grønn/rød)
+- Viser filnavn og størrelse under opplasting
+- Viser serverens feilmelding (`detail`) direkte ved feil
+- "Last inn siden på nytt"-knapp vises inline etter vellykket import
+- Knappen disables og viser "⏳ Importerer…" under pågående opplasting
+- Versjonsnummer i Om-seksjonen oppdatert til 2.2.1
+
+```
+git add frontend/src/pages/Settings.jsx
+git commit -m "feat: add step-by-step import status indicator with error display in Settings"
 git add git.md
-git commit -m "docs: update changelog for v2.3.0 timer persistence"
+git commit -m "docs: update changelog for v2.3.0 import status and error handling"
 ```
