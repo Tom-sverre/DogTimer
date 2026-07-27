@@ -18,19 +18,14 @@ function formatDuration(minutes) {
   return m > 0 ? `${minutes} min (${h}t ${m}m)` : `${minutes} min (${h}t)`
 }
 
-function calcDailySleepMinutes(sessions, dateStr) {
-  const dayStart = new Date(`${dateStr}T00:00:00`)
-  const dayEnd   = new Date(`${dateStr}T23:59:59`)
+function calcDailySleepMinutes(sessions) {
   let totalMs = 0
+  const now = new Date()
   for (const s of sessions) {
     if (s.type !== 'sleep') continue
     const start = new Date(s.start_time)
-    const end   = s.end_time ? new Date(s.end_time) : new Date()
-    const clippedStart = Math.max(start.getTime(), dayStart.getTime())
-    const clippedEnd   = Math.min(end.getTime(),   dayEnd.getTime())
-    if (clippedEnd > clippedStart) {
-      totalMs += clippedEnd - clippedStart
-    }
+    const end   = s.end_time ? new Date(s.end_time) : now
+    totalMs += end.getTime() - start.getTime()
   }
   return Math.round(totalMs / 60000)
 }
@@ -147,7 +142,7 @@ export default function SleepTracker() {
     fetchAllSessions()
   }
 
-  const dailySleepMin = calcDailySleepMinutes(sessions, dateFilter)
+  const dailySleepMin = calcDailySleepMinutes(sessions)
   const sleepSessions = sessions.filter(s => s.type === 'sleep')
   const hasAnySleep = sleepSessions.length > 0
 
@@ -188,7 +183,7 @@ export default function SleepTracker() {
           <span style={{ fontSize: 22 }}>🌙</span>
           <div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>
-              Total søvn {dateFilter === new Date().toISOString().slice(0, 10) ? 'i dag' : dateFilter} (00:00–23:59)
+              Total søvn {dateFilter === new Date().toISOString().slice(0, 10) ? 'i dag' : dateFilter}
             </div>
             <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--accent2)' }}>
               {formatDuration(dailySleepMin)}
