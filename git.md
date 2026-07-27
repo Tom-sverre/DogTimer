@@ -561,3 +561,39 @@ git commit -m "fix: use local time in datetime-local inputs instead of UTC (toLo
 git add git.md
 git commit -m "docs: update changelog for v2.4.2 timezone fix in edit form"
 ```
+
+---
+
+### Release 2.5.0 – Ukegraf i søvnlogg ###
+
+# Ukentlig søvngraf (Man–Søn)
+Ny søylediagram over søvnloggen som viser total søvntid per dag for gjeldende uke.
+
+Endringer i `frontend/src/pages/SleepTracker.jsx`:
+
+Nye hjelpefunksjoner:
+- `localDateStr(date?)` – returnerer lokal dato som `YYYY-MM-DD` (erstatter `.toISOString().slice(0,10)` som ga UTC-dato)
+- `getWeekDays(dateStr)` – returnerer liste med 7 datostrenger fra mandag til søndag i uken som inneholder `dateStr`
+- `sleepMinutesForDay(allSessions, dateStr)` – summerer søvnminutter for én dag ved å klippe alle søvnøkter til daggrensene 00:00–23:59 (håndterer sesjoner som spenner over midnatt korrekt)
+
+Ny komponent `WeeklyChart`:
+- Rendres øverst på siden, over dagsoppsummeringen
+- Viser 7 søyler (Man–Tir–Ons–Tor–Fre–Lør–Søn) med høyde proporsjonal til søvnminutter
+- Referansemaks: maks av ukens verdier og 480 min (8t) – grafen skalerer dynamisk
+- Verdi vises over hver søyle (format: `6t 30m`, `45m` eller `–` ved null)
+- Valgt dag: søylen er fullt opplyst (`--accent2`) med svak glow-ring
+- Andre dager med data: 45 % opacity av accent2-fargen
+- Dager uten data: tynn grå strek
+- Fremtidige dager: 35 % opacity, ikke-klikkbare
+- Dagen i dag: prikk under dag-etiketten
+- Klikk på en søyle bytter dato-filteret til den aktuelle dagen
+
+Øvrige forbedringer:
+- `dateFilter` og "i dag"-sjekken bruker nå `localDateStr()` i stedet for `.toISOString().slice(0,10)` for å unngå UTC-datoforskyvning ved midnatt
+
+```
+git add frontend/src/pages/SleepTracker.jsx
+git commit -m "feat: add weekly sleep bar chart (Mon-Sun) with clickable day navigation"
+git add git.md
+git commit -m "docs: update changelog for v2.5.0 weekly sleep chart"
+```
