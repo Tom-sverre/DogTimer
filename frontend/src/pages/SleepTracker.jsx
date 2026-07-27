@@ -5,6 +5,12 @@ const TYPE_LABEL = { sleep: 'Sover', awake: 'Våken' }
 const TYPE_ICON  = { sleep: '😴', awake: '🐾' }
 const TYPE_COLOR = { sleep: 'var(--accent2)', awake: 'var(--success)' }
 
+function toLocalInput(dateStr) {
+  const d = new Date(dateStr)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function isLinked(a, b, toleranceSec = 60) {
   if (!a || !b) return false
   return Math.abs(new Date(a) - new Date(b)) <= toleranceSec * 1000
@@ -55,7 +61,7 @@ export default function SleepTracker() {
   function openNew() {
     setEditSession(null)
     setCascadeInfo(null)
-    setForm({ type: 'sleep', start_time: new Date().toISOString().slice(0, 16), end_time: '', notes: '' })
+    setForm({ type: 'sleep', start_time: toLocalInput(new Date()), end_time: '', notes: '' })
     setShowModal(true)
   }
 
@@ -64,8 +70,8 @@ export default function SleepTracker() {
     setCascadeInfo(null)
     setForm({
       type: s.type,
-      start_time: new Date(s.start_time).toISOString().slice(0, 16),
-      end_time: s.end_time ? new Date(s.end_time).toISOString().slice(0, 16) : '',
+      start_time: toLocalInput(s.start_time),
+      end_time: s.end_time ? toLocalInput(s.end_time) : '',
       notes: s.notes || ''
     })
     setShowModal(true)
