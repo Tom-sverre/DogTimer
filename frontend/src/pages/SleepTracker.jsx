@@ -4,6 +4,13 @@ import { useParams, Link } from 'react-router-dom'
 const TYPE_LABEL = { sleep: 'Sover', awake: 'Våken' }
 const TYPE_ICON  = { sleep: '😴', awake: '🐾' }
 const TYPE_COLOR = { sleep: 'var(--accent2)', awake: 'var(--success)' }
+const DAY_NAMES  = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+
+function localDateStr(date) {
+  const d = date || new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 function toLocalInput(dateStr) {
   const d = new Date(dateStr)
@@ -36,11 +43,153 @@ function calcDailySleepMinutes(sessions) {
   return Math.round(totalMs / 60000)
 }
 
+function getWeekDays(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00`)
+  const day = d.getDay()
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  const pad = n => String(n).padStart(2, '0')
+  return Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(monday)
+    dd.setDate(monday.getDate() + i)
+    return `${dd.getFullYear()}-${pad(dd.getMonth() + 1)}-${pad(dd.getDate())}`
+  })
+}
+
+function sleepMinutesForDay(allSessions, dateStr) {
+  const dayStart = new Date(`${dateStr}T00:00:00`)
+  const dayEnd   = new Date(`${dateStr}T23:59:59`)
+  let totalMs = 0
+  for (const s of allSessions) {
+    if (s.type !== 'sleep') continue
+    const start = new Date(s.start_time)
+    const end   = s.end_time ? new Date(s.end_time) : new Date()
+    const cs = Math.max(start.getTime(), dayStart.getTime())
+    const ce = Math.min(end.getTime(),   dayEnd.getTime())
+    if (ce > cs) totalMs += ce - cs
+  }
+  return Math.round(totalMs / 60000)
+}
+
+function WeeklyChart({ allSessions, dateFilter, onDayClick }) {
+  const today    = localDateStr()
+  const weekDays = getWeekDays(dateFilter)
+  const CHART_H  = 110
+
+  const data = weekDays.map((date, i) => ({
+    date,
+    label: DAY_NAMES[i],
+    minutes: sleepMinutesForDay(allSessions, date)
+  }))
+
+  const maxMin = Math.max(...data.map(d => d.minutes), 480)
+
+  return (
+    <div style={{
+      background: 'var(--bg3)',
+      border: '1px solid var(--border)',
+      borderRadius: 12,
+      padding: '16px 16px 12px',
+      marginBottom: 16
+    }}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600, marginBottom: 14 }}>
+        📊 Søvn denne uken
+      </div>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end' }}>
+        {data.map(({ date, label, minutes }) => {
+          const isSelected = date === dateFilter
+          const isToday    = date === today
+          const isFuture   = date > today
+          const barH = minutes > 0
+            ? Math.max(6, Math.round((minutes / maxMin) * CHART_H))
+            : 0
+          const h  = Math.floor(minutes / 60)
+          const m  = minutes % 60
+          const valLabel = minutes === 0
+            ? (isFuture ? '' : '–')
+            : h > 0
+              ? `${h}t${m > 0 ? ` ${m}m` : ''}`
+              : `${m}m`
+
+          return (
+            <div
+              key={date}
+              onClick={() => !isFuture && onDayClick(date)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                cursor: isFuture ? 'default' : 'pointer',
+                opacity: isFuture ? 0.35 : 1
+              }}
+            >
+              {/* Verdi over stolpen */}
+              <div style={{
+                fontSize: 10,
+                color: minutes > 0 ? 'var(--text1)' : 'var(--text2)',
+                textAlign: 'center',
+                minHeight: 14,
+                lineHeight: '14px',
+                fontWeight: minutes > 0 ? 600 : 400
+              }}>
+                {valLabel}
+              </div>
+
+              {/* Stolpe */}
+              <div style={{ width: '100%', height: CHART_H, display: 'flex', alignItems: 'flex-end' }}>
+                <div style={{
+                  width: '100%',
+                  height: minutes > 0 ? barH : 3,
+                  borderRadius: 5,
+                  background: isSelected
+                    ? 'var(--accent2)'
+                    : minutes > 0
+                      ? 'color-mix(in srgb, var(--accent2) 45%, transparent)'
+                      : 'var(--border)',
+                  boxShadow: isSelected ? '0 0 0 2px var(--accent2)44' : 'none',
+                  transition: 'height 0.3s ease, background 0.2s'
+                }} />
+              </div>
+
+              {/* Dag-navn */}
+              <div style={{
+                fontSize: 11,
+                fontWeight: isSelected || isToday ? 700 : 400,
+                color: isSelected
+                  ? 'var(--accent2)'
+                  : isToday
+                    ? 'var(--text1)'
+                    : 'var(--text2)',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2
+              }}>
+                {label}
+                {isToday && (
+                  <span style={{
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: isSelected ? 'var(--accent2)' : 'var(--accent)',
+                    display: 'block'
+                  }} />
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function SleepTracker() {
   const { dogId } = useParams()
   const [sessions, setSessions] = useState([])
   const [allSessions, setAllSessions] = useState([])
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10))
+  const [dateFilter, setDateFilter] = useState(localDateStr())
   const [showModal, setShowModal] = useState(false)
   const [editSession, setEditSession] = useState(null)
   const [form, setForm] = useState({ type: 'sleep', start_time: '', end_time: '', notes: '' })
@@ -150,7 +299,7 @@ export default function SleepTracker() {
 
   const dailySleepMin = calcDailySleepMinutes(sessions)
   const sleepSessions = sessions.filter(s => s.type === 'sleep')
-  const hasAnySleep = sleepSessions.length > 0
+  const hasAnySleep   = sleepSessions.length > 0
 
   return (
     <div className="page">
@@ -174,6 +323,13 @@ export default function SleepTracker() {
         </div>
       </div>
 
+      {/* Ukegraf */}
+      <WeeklyChart
+        allSessions={allSessions}
+        dateFilter={dateFilter}
+        onDayClick={setDateFilter}
+      />
+
       {/* Dagsoppsummering søvn */}
       {hasAnySleep && (
         <div style={{
@@ -189,7 +345,7 @@ export default function SleepTracker() {
           <span style={{ fontSize: 22 }}>🌙</span>
           <div>
             <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>
-              Total søvn {dateFilter === new Date().toISOString().slice(0, 10) ? 'i dag' : dateFilter}
+              Total søvn {dateFilter === localDateStr() ? 'i dag' : dateFilter}
             </div>
             <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--accent2)' }}>
               {formatDuration(dailySleepMin)}
