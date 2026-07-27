@@ -455,3 +455,59 @@ git commit -m "feat: add step-by-step import status indicator with error display
 git add git.md
 git commit -m "docs: update changelog for v2.3.0 import status and error handling"
 ```
+
+---
+
+### Release 2.3.1 – Fix: Import blokkert av Safari PWA ###
+
+# Rotårsak: window.confirm() blokkert i Safari standalone-modus
+Safari blokkerer `window.confirm()` når appen kjøres som PWA fra hjemskjermen (standalone-modus) — dialogen vises ikke og returnerer alltid `false`. Import ble avbrutt stille uten noen tilbakemelding til bruker.
+
+# Fix: Erstattet confirm() med innebygd bekreftelsesdialog
+Endringer i `frontend/src/pages/Settings.jsx`:
+- Fjernet `window.confirm()` helt
+- Tostegs-flyt: (1) bruker velger fil → gult bekreftelseskort med filnavn/størrelse og "Ja, importer"/"Avbryt"-knapper vises, (2) bruker bekrefter → opplasting starter og statuskort oppdateres
+- `accept` utvidet til `.db,.sqlite,.sqlite3` for bredere kompatibilitet
+- Versjonsnummer oppdatert til 2.3.0
+
+# Fix: nginx client_max_body_size
+Endringer i `frontend/nginx.conf`:
+- Lagt til `client_max_body_size 50M` (nginx-default er 1 MB og ville blokkert større databaser)
+- Lagt til `proxy_request_buffering off` på API-proxyen for bedre strømming av store filer
+
+```
+git add frontend/src/pages/Settings.jsx frontend/nginx.conf
+git commit -m "fix: replace window.confirm() with inline UI dialog to fix Safari PWA import block"
+git add git.md
+git commit -m "docs: update changelog for v2.3.1 Safari PWA import fix"
+```
+
+---
+
+### Release 2.4.0 – Søvnlogg: varighetsformat og dagsoppsummering ###
+
+# Varighetsvisning med timer i parentes
+Varigheten på søvn/våken-økter vises nå med minutter og timer for bedre lesbarhet.
+
+Endringer i `frontend/src/pages/SleepTracker.jsx`:
+- Ny hjelpefunksjon `formatDuration(minutes)`: returnerer `"X min"` under 60 min,
+  `"X min (Yt Zm)"` ved hele og halve timer, `"X min (Yt)"` ved eksakt time
+- Varighetsfeltet i økt-listeelementer bruker nå `formatDuration()` i stedet for
+  den rå `${dur} min`-strengen
+
+# Dagsoppsummering – total søvntid 00:00–23:59
+Ny oppsummeringskort over øktlisten som viser total søvntid for valgt dag.
+
+Endringer i `frontend/src/pages/SleepTracker.jsx`:
+- Ny hjelpefunksjon `calcDailySleepMinutes(sessions, dateStr)`:
+  summer alle søvn-økter klippet til daggrensene 00:00–23:59 (håndterer
+  aktive pågående økter ved å bruke `new Date()` som slutt)
+- Vises kun når det finnes minst én søvn-økt for datoen
+- Kortet viser dato ("i dag" / faktisk dato), ikon 🌙 og formatert total søvntid
+
+```
+git add frontend/src/pages/SleepTracker.jsx
+git commit -m "feat: show duration as minutes + hours in parentheses, add daily sleep summary card"
+git add git.md
+git commit -m "docs: update changelog for v2.4.0 sleep log improvements"
+```
