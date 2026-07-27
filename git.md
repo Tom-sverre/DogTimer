@@ -536,3 +536,28 @@ git commit -m "fix: sum all returned sleep sessions for daily total, not just 00
 git add git.md
 git commit -m "docs: update changelog for v2.4.1 midnight sleep summary fix"
 ```
+
+---
+
+### Release 2.4.2 – Fix: Redigeringsskjema viste UTC-tid i stedet for lokal tid ###
+
+# Rotårsak: .toISOString().slice(0,16) gir UTC, ikke lokal tid
+`datetime-local`-inputene ble populert med `.toISOString().slice(0, 16)` som alltid
+returnerer UTC-tid. I Oslo (UTC+2) vises dermed 22:50 i skjemaet for en sesjon
+som i listen korrekt vises som 00:50. Selve lagringen var riktig.
+
+# Fix: Ny hjelpefunksjon toLocalInput()
+Endringer i `frontend/src/pages/SleepTracker.jsx`:
+- Ny funksjon `toLocalInput(dateStr)` bygger en `YYYY-MM-DDTHH:MM`-streng fra
+  lokale klokkeslett-komponenter (getFullYear, getMonth, getDate, getHours, getMinutes)
+- `openNew()` bruker `toLocalInput(new Date())` for starttidspunkt
+- `openEdit()` bruker `toLocalInput(s.start_time)` og `toLocalInput(s.end_time)`
+- Lagringen via `new Date(form.start_time).toISOString()` fungerer fortsatt korrekt
+  fordi nettleseren tolker en `datetime-local`-verdi uten tidssone som lokal tid
+
+```
+git add frontend/src/pages/SleepTracker.jsx
+git commit -m "fix: use local time in datetime-local inputs instead of UTC (toLocalInput helper)"
+git add git.md
+git commit -m "docs: update changelog for v2.4.2 timezone fix in edit form"
+```
