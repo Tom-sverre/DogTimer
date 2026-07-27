@@ -511,3 +511,28 @@ git commit -m "feat: show duration as minutes + hours in parentheses, add daily 
 git add git.md
 git commit -m "docs: update changelog for v2.4.0 sleep log improvements"
 ```
+
+---
+
+### Release 2.4.1 – Fix: Søvnoppsummering teller ikke søvn over midnatt ###
+
+# Rotårsak: dag-klipping ekskluderte søvnøkter som startet etter midnatt
+`calcDailySleepMinutes` klippet alle varigheter til 00:00–23:59 for den valgte datoen.
+Søvnøkter som starter etter midnatt (f.eks. 00:50–04:52 på neste dag), men som API-en
+returnerer som del av nattens søvnsesjon, ble fullstendig utelatt fra summen.
+
+# Fix: Summer alle søvnøkter som vises i listen
+Endringer i `frontend/src/pages/SleepTracker.jsx`:
+- `calcDailySleepMinutes` tar ikke lenger `dateStr` som argument
+- Fjernet dag-klipping (dayStart / dayEnd / clippedStart / clippedEnd)
+- Summerer nå varigheten av ALLE søvnøkter i `sessions`-arrayen – de øktene
+  API-en faktisk returnerer for den valgte datoen, inkludert nattøkter over midnatt
+- Aktive (pågående) søvnøkter teller frem til `new Date()` som før
+- Fjernet "(00:00–23:59)" fra kortets undertekst
+
+```
+git add frontend/src/pages/SleepTracker.jsx
+git commit -m "fix: sum all returned sleep sessions for daily total, not just 00:00-23:59 window"
+git add git.md
+git commit -m "docs: update changelog for v2.4.1 midnight sleep summary fix"
+```
